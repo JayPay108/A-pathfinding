@@ -54,7 +54,7 @@ class Graph:
         nodeFileRows = nodeFile.readlines()
         nodeFile.close()
 
-        self.nodes = [None]
+        self.nodes = [Node(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)]
         for row in nodeFileRows:
             if row[0] == '#':
                 continue
@@ -82,7 +82,7 @@ class Graph:
         connectionFileRows = connectionFile.readlines()
         connectionFile.close()
 
-        self.connections = [None]
+        self.connections = [Connection(0, 0, 0, 0, 0, 0, 0)]
         for row in connectionFileRows:
             if row[0] == '#':
                 continue
@@ -122,10 +122,7 @@ class Graph:
 
 
     def aStarFindPath(self, first, last):
-        first -= 1
-        last -= 1
-
-        for i in range(len(self.nodes)):
+        for i in range(1, len(self.nodes)):
             self.nodes[i].status = UNVISITED
             self.nodes[i].costSoFar = INFINITY
             self.nodes[i].previous = UNDEFINED
@@ -141,14 +138,14 @@ class Graph:
             currentNodeIndex = self.aStarFindLowest(openNodes)
 
             if currentNodeIndex == last:
-                pass #break
+                break
 
-            currentConnections = self.getConnections(currentNodeIndex + 1)
+            currentConnections = self.getConnections(currentNodeIndex)
 
             for connectionNumber in currentConnections:
-                connection = self.connections[connectionNumber - 1]
+                connection = self.connections[connectionNumber]
 
-                toNodeIndex = connection.toNode - 1
+                toNodeIndex = connection.toNode
                 toCost = self.nodes[currentNodeIndex].costSoFar + connection.cost
 
                 if toCost < self.nodes[toNodeIndex].costSoFar:
@@ -157,7 +154,6 @@ class Graph:
                     self.nodes[toNodeIndex].estimatedHeuristic = self.nodes[toNodeIndex].distanceFrom(self.nodes[last])
                     self.nodes[toNodeIndex].estimatedTotal = self.nodes[toNodeIndex].costSoFar + self.nodes[toNodeIndex].estimatedHeuristic
                     self.nodes[toNodeIndex].previous = currentNodeIndex
-                    print(toNodeIndex + 1, self.nodes[toNodeIndex].previous + 1) # debug
                     
                     if toNodeIndex not in openNodes:
                         openNodes.append(toNodeIndex)
@@ -166,8 +162,8 @@ class Graph:
             openNodes.remove(currentNodeIndex)
 
     def retrievePath(self, first, last):
-        first -= 1
-        last -= 1
+        first
+        last
 
         path = []
         current = last
@@ -188,14 +184,14 @@ class Graph:
         return path
 
 graph = Graph("Nodes.txt", "Connections.txt") # TODO: Change these file names!
-startNodeNumber = 10
-endNodeNumber = 35
+startNodeNumber = 1
+endNodeNumber = 23
 graph.aStarFindPath(startNodeNumber, endNodeNumber)
 path = graph.retrievePath(startNodeNumber, endNodeNumber)
 
 print('\n\n\n PATH \n------')
 for i in path[::-1]:    
-    print(i + 1)
+    print(i)
 
 
 print('-----')
