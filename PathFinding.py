@@ -1,52 +1,22 @@
 import math
 
-# Simple vector class, this is missing alot of methods a normal vector
-# object should have but it has what is needed for this assignment
-class Vector:
-    def __init__(self, x = 0, y = 0):
-        self.x = x
-        self.y = y  # Z in this sense
+INFINITY = float('inf')
+UNDEFINED = 0
+UNVISITED = 1
+OPEN = 2
+CLOSED = 3
 
-    def normalize(self):    # Normalize to unit vector
-        magnitude = self.length()
-        self.x /= magnitude
-        self.y /= magnitude
-
-    def length(self):   # Returns the vector's magnitude
-        return math.sqrt(math.pow(self[0], 2) + math.pow(self[1], 2))
-
-    def dot(self, vector2): # Will preform dot product on a second vector
-        return (self.x * vector2.x) + (self.y * vector2.y)
-
-    # Operator overloading
-    def __add__(self, vector2):
-        return Vector(self[0] + vector2[0], self[1] + vector2[1])
-
-    def __sub__(self, vector2):
-        return Vector(self[0] - vector2[0], self[1] - vector2[1])
-
-    def __mul__(self, scalar):
-        return Vector(self[0] * scalar, self[1] * scalar)
-
-    def __truediv__(self, scalar):
-        return Vector(self[0] / scalar, self[1] / scalar)
-
-    def __getitem__(self, key): # Bracket overloading
-        if key == 0:
-            return self.x
-        elif key == 1:
-            return self.y
-        return None
 
 class Node:
-    def __init__(self, nType, nodeNumber, status, costSoFar, estimatedHeuristic, estimatedTotal, previous, location, numPlotPos, namePlotPos, nodeLabel):
+    def __init__(self, nType, nodeNumber, status, costSoFar, estimatedHeuristic, estimatedTotal, previous, xLocation, yLocation, numPlotPos, namePlotPos, nodeLabel):
         self.nodeNumber = nodeNumber
         self.status = status
         self.costSoFar = costSoFar
         self.estimatedHeuristic = estimatedHeuristic
         self.estimatedTotal = estimatedTotal
         self.previous = previous
-        self.location = location
+        self.xLocation = xLocation
+        self.yLocation = yLocation
 
         # Not used by this program
         self.type = nType
@@ -56,7 +26,13 @@ class Node:
 
     # Calculating distance between two nodes using standard Euclidean distance formula
     def distanceFrom(self, node2):
-        return math.sqrt(math.pow(node2.location.x - self.location.x, 2) + math.pow(node2.location.y - self.location.y, 2))
+        x1 = self.xLocation
+        y1 = self.yLocation
+        x2 = node2.xLocation
+        y2 = node2.yLocation
+
+        # Formula for calculating Euclidian Distance
+        return math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2))
 
 
 class Connection:
@@ -78,7 +54,7 @@ class Graph:
         nodeFileRows = nodeFile.readlines()
         nodeFile.close()
 
-        self.nodes = []
+        self.nodes = [None]
         for row in nodeFileRows:
             if row[0] == '#':
                 continue
@@ -92,27 +68,28 @@ class Graph:
             estimatedHeuristic = float(row[4])
             estimatedTotal = float(row[5])
             previous = float(row[6])
-            location = Vector(float(row[7]), float(row[8]))
+            xLocation = float(row[7])
+            yLocation = float(row[8])
             numPlotPos = int(row[9])
             namePlotPos = int(row[10])
             nodeLabel = row[11].replace('"', '').replace('\\n', '\n').strip()
 
             self.nodes.append(Node(nType, nodeNumber, status, costSoFar, estimatedHeuristic,
-                            estimatedTotal, previous, location, numPlotPos, namePlotPos, nodeLabel))
+                            estimatedTotal, previous, xLocation, yLocation, numPlotPos, namePlotPos, nodeLabel))
 
         # Reading connections   
         connectionFile = open(connectionFileName, 'r')
         connectionFileRows = connectionFile.readlines()
         connectionFile.close()
 
-        self.connections = []
+        self.connections = [None]
         for row in connectionFileRows:
             if row[0] == '#':
                 continue
 
             row = row.split(',')
 
-            cType = row[0].replace('"').strip()
+            cType = row[0].replace('"', '').strip()
             connectionNumber = int(row[1])
             fromNode = int(row[2])
             toNode = int(row[3])
@@ -121,3 +98,110 @@ class Graph:
             roadType = int(row[6])
 
             self.connections.append(Connection(cType, connectionNumber, fromNode, toNode, cost, costPlotPosition, roadType))
+
+    def getConnections(self, currentNode):
+        nodeConnections = []
+
+        for connection in self.connections:
+            if connection.fromNode == currentNode:
+                nodeConnections.append(connection.connectionNumber)
+
+        return nodeConnections
+
+    def aStarFindLowest(self, openNodes):
+        lowestTotal = INFINITY
+
+        for nodeIndex in openNodes:
+            node = self.nodes[nodeIndex]
+
+            if node.estimatedTotal < lowestTotal:
+                lowestTotal = node.estimatedTotal
+                resultNodeIndex = nodeIndex
+
+        return resultNodeIndex
+
+
+    def aStarFindPath(self, first, last):
+        first -= 1
+        last -= 1
+
+        for i in range(len(self.nodes)):
+            self.nodes[i].status = UNVISITED
+            self.nodes[i].costSoFar = INFINITY
+            self.nodes[i].previous = UNDEFINED
+
+        self.nodes[first].status = OPEN
+        self.nodes[first].costSoFar = 0
+        openNodes = [first]
+
+        iteration = 0
+        while len(openNodes) > 0:
+            iteration += 1
+
+            currentNodeIndex = self.aStarFindLowest(openNodes)
+
+            if currentNodeIndex == last:
+                pass #break
+
+            currentConnections = self.getConnections(currentNodeIndex + 1)
+
+            for connectionNumber in currentConnections:
+                connection = self.connections[connectionNumber - 1]
+
+                toNodeIndex = connection.toNode - 1
+                toCost = self.nodes[currentNodeIndex].costSoFar + connection.cost
+
+                if toCost < self.nodes[toNodeIndex].costSoFar:
+                    self.nodes[toNodeIndex].status = OPEN
+                    self.nodes[toNodeIndex].costSoFar = toCost
+                    self.nodes[toNodeIndex].estimatedHeuristic = self.nodes[toNodeIndex].distanceFrom(self.nodes[last])
+                    self.nodes[toNodeIndex].estimatedTotal = self.nodes[toNodeIndex].costSoFar + self.nodes[toNodeIndex].estimatedHeuristic
+                    self.nodes[toNodeIndex].previous = currentNodeIndex
+                    print(toNodeIndex + 1, self.nodes[toNodeIndex].previous + 1) # debug
+                    
+                    if toNodeIndex not in openNodes:
+                        openNodes.append(toNodeIndex)
+            
+            self.nodes[currentNodeIndex].status = CLOSED
+            openNodes.remove(currentNodeIndex)
+
+    def retrievePath(self, first, last):
+        first -= 1
+        last -= 1
+
+        path = []
+        current = last
+
+        while (current != first) and (current != UNDEFINED):
+            path.append(current)
+            current = self.nodes[current].previous
+
+        if current == first:
+            path.append(first)
+            # Path found!
+
+        else:
+            path = []
+            print('path not found') # debug
+            # Path could not be found
+
+        return path
+
+graph = Graph("Nodes.txt", "Connections.txt") # TODO: Change these file names!
+startNodeNumber = 10
+endNodeNumber = 35
+graph.aStarFindPath(startNodeNumber, endNodeNumber)
+path = graph.retrievePath(startNodeNumber, endNodeNumber)
+
+print('\n\n\n PATH \n------')
+for i in path[::-1]:    
+    print(i + 1)
+
+
+print('-----')
+connections = graph.getConnections(3)
+print(connections)
+
+
+
+
